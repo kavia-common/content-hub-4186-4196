@@ -1,0 +1,30 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PostCard from '../components/PostCard.astro';
+import { listPosts } from '../lib/api';
+
+const { searchParams } = Astro.url;
+const q = searchParams.get('q') || '';
+const rs = await listPosts({ q, page: 1, limit: 50 });
+const items = rs.ok && rs.data ? rs.data.items : [];
+---
+
+<Layout title="Search">
+  <h1>Search</h1>
+  <form method="get" class="searchbar">
+    <input name="q" type="search" placeholder="Search posts..." value={q} />
+    <button type="submit">Search</button>
+  </form>
+
+  {q && <p>Results for "{q}"</p>}
+  {items.length === 0 && q && <p>No results found.</p>}
+  {items.map((post) => <PostCard post={post} />)}
+</Layout>
+
+<style>
+.searchbar { display:flex; gap:8px; margin: 12px 0 16px; }
+.searchbar input{
+  flex:1; border:1px solid var(--border-color); border-radius:8px; padding:8px 10px; background: var(--bg-color); color: var(--text-color);
+}
+.searchbar button{ padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background: var(--card-bg); color: var(--text-color);}
+</style>

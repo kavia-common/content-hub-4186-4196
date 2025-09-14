@@ -1,0 +1,28 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { listPosts } from '../../lib/api';
+
+const { searchParams } = Astro.url;
+const tag = searchParams.get('tag') || '';
+const rs = await listPosts({ tag, page: 1, limit: 30 });
+const items = rs.ok && rs.data ? rs.data.items : [];
+---
+
+<Layout title="Tags">
+  <h1>Tags</h1>
+  <form class="picker" method="get">
+    <input type="text" name="tag" placeholder="Enter a tag..." value={tag} />
+    <button type="submit">Filter</button>
+  </form>
+
+  {tag && <h2>Tag: {tag}</h2>}
+  {items.map((post) => <PostCard post={post} />)}
+  {!tag && <p>Provide a tag to filter posts.</p>}
+</Layout>
+
+<style>
+.picker { display:flex; gap:8px; margin: 12px 0 16px; }
+.picker input{ border:1px solid var(--border-color); border-radius:8px; padding:8px 10px; background: var(--bg-color); color: var(--text-color); }
+.picker button{ padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); }
+</style>

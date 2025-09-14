@@ -1,47 +1,51 @@
-# Astro Starter Kit: Minimal
+# Content Hub Blog - Astro Frontend
 
-```sh
-npm create astro@latest -- --template minimal
-```
+Feature-rich Astro frontend for a blog backed by an Express.js API.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/minimal)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/minimal)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/minimal/devcontainer.json)
+## Features
+- Static-first pages with selective hydration:
+  - Home listing with search, category and tag filters
+  - Post detail pages
+  - Interactive Like button (client:load)
+  - Interactive Comment widget (client:load)
+- Admin dashboard:
+  - JWT login
+  - Draft/Published filters
+  - Create, edit, publish, unpublish, delete posts
+- SEO artifacts:
+  - RSS feed at /rss.xml
+  - Sitemap at /sitemap.xml
+- Theming (light/dark) with ThemeToggle
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Getting Started
+1) Install deps
+   npm install
 
-## 🚀 Project Structure
+2) Configure environment
+   Copy .env.example to .env and adjust values:
+   - PUBLIC_BACKEND_API_BASE_URL
+   - PUBLIC_SITE_URL
+   - PUBLIC_SITE_NAME
+   - PUBLIC_SITE_DESCRIPTION
+   - PUBLIC_AUTH_TOKEN_STORAGE_KEY
 
-Inside of your Astro project, you'll see the following folders and files:
+3) Run dev
+   npm run dev
+   App runs on http://localhost:3000 (configured in astro.config.mjs)
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+## Routes
+- /               -> Latest posts with search/filters
+- /search         -> Search UI
+- /categories     -> Filter by category
+- /tags           -> Filter by tag
+- /posts/[slug]   -> Post detail
+- /admin          -> Admin dashboard (login + list)
+- /admin/posts/new       -> Create post
+- /admin/posts/[id]      -> Edit post
+- /rss.xml        -> RSS feed
+- /sitemap.xml    -> Sitemap
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
-
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## Notes
+- This frontend expects the backend API specified in the provided OpenAPI file.
+- No secrets are stored; only PUBLIC_ variables are used.
+- Adjust CORS on the backend if serving across domains.

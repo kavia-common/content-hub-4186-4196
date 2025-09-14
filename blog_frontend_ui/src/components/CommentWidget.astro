@@ -1,0 +1,122 @@
+---
+/**
+ * PUBLIC_INTERFACE
+ * CommentWidget lists approved comments and allows new comment submission.
+ * Props:
+ * - postId: string (required)
+ */
+const { postId } = Astro.props as { postId: string };
+---
+
+<section class="comments" client:load data-post-id={postId}></section>
+
+<script>
+  import { listComments, createComment } from '../lib/api';
+
+  function makeEl<K extends keyof HTMLElementTagNameMap>(tag, className?, text?) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text) el.textContent = text;
+    return el;
+  }
+
+  async function render(root) {
+    const postId = root.dataset.postId;
+    root.innerHTML = '';
+
+    const title = makeEl('h3', 'comments-title', 'Comments');
+    const list = makeEl('div', 'comment-list');
+
+    const form = makeEl('form', 'comment-form');
+    const nameIn = document.createElement('input');
+    nameIn.name = 'authorName';
+    nameIn.placeholder = 'Your name';
+    nameIn.required = true;
+    const contentIn = document.createElement('textarea');
+    contentIn.name = 'content';
+    contentIn.placeholder = 'Your comment...';
+    contentIn.required = true;
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.textContent = 'Post Comment';
+    form.append(nameIn, contentIn, submitBtn);
+
+    root.append(title, list, form);
+
+    async function loadComments() {
+      list.innerHTML = 'Loading...';
+      const res = await listComments(postId);
+      if (res.ok && Array.isArray(res.data)) {
+        list.innerHTML = '';
+        res.data.forEach((c) => {
+          const item = makeEl('div', 'comment-item');
+          const head = makeEl('div', 'comment-head', `${c.authorName} • ${new Date(c.createdAt).toLocaleString()}`);
+          const body = makeEl('div', 'comment-body', c.content);
+          item.append(head, body);
+          list.append(item);
+        });
+        if (res.data.length === 0) {
+          list.textContent = 'No comments yet';
+        }
+      } else {
+        list.textContent = res.error || 'Failed to load comments';
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      try {
+        const payload = { authorName: nameIn.value.trim(), content: contentIn.value.trim() };
+        if (!payload.authorName || !payload.content) return;
+        const res = await createComment(postId, payload);
+        if (res.ok) {
+          nameIn.value = '';
+          contentIn.value = '';
+          await loadComments();
+        } else {
+          alert(res.error || 'Failed to submit comment');
+        }
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    await loadComments();
+  }
+
+  export default (el) => render(el);
+</script>
+
+<style>
+.comments{ margin-top:24px; }
+.comments-title{ margin: 0 0 12px; }
+.comment-list{ display: grid; gap: 10px; margin-bottom: 16px; }
+.comment-item{
+  border:1px solid var(--border-color);
+  border-radius:10px;
+  background: var(--card-bg);
+  padding: 12px;
+}
+.comment-head{ font-weight: 600; color: var(--text-color); margin-bottom: 6px; }
+.comment-body{ color: var(--text-secondary); white-space: pre-wrap; }
+.comment-form{
+  display: grid; gap: 8px;
+}
+.comment-form input, .comment-form textarea{
+  border:1px solid var(--border-color);
+  border-radius:8px;
+  padding:10px;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+.comment-form button{
+  justify-self: start;
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-color);
+  cursor: pointer;
+}
+</style>

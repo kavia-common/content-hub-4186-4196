@@ -1,0 +1,180 @@
+---
+export async function getStaticPaths() {
+  // We don't know admin post IDs at build time; provide an empty list.
+  // Navigating to /admin/posts/xxx will still render because the page is client-powered.
+  return [];
+}
+
+import Layout from '../../../layouts/Layout.astro';
+import { adminUpdatePost, adminDeletePost, adminPublishPost, adminUnpublishPost, apiFetch } from '../../../lib/api';
+import { PUBLIC_AUTH_TOKEN_STORAGE_KEY } from '../../../lib/env';
+
+const { id } = Astro.params;
+const isNew = id === 'new';
+
+let post: any = undefined;
+if (!isNew) {
+  const rs = await apiFetch(`/api/posts/admin/${encodeURIComponent(id!)}`, { auth: true });
+  if (rs.ok) post = rs.data;
+}
+---
+
+<Layout title={isNew ? 'Create Post' : 'Edit Post'} noIndex={true}>
+  <h1>{isNew ? 'Create New Post' : 'Edit Post'}</h1>
+  <section id="editor-root" client:load data-is-new={String(isNew)} data-id={id || ''}></section>
+
+  <script>
+    import { adminCreatePost, adminUpdatePost, adminDeletePost, adminPublishPost, adminUnpublishPost, apiFetch } from '../../../lib/api';
+    import { PUBLIC_AUTH_TOKEN_STORAGE_KEY } from '../../../lib/env';
+
+    export default async (el) => {
+      const isNew = el.dataset.isNew === 'true';
+      const id = el.dataset.id;
+
+      if (!localStorage.getItem(PUBLIC_AUTH_TOKEN_STORAGE_KEY)) {
+        el.innerHTML = 'Please <a href="/admin">login</a>.';
+        return;
+      }
+
+      const form = document.createElement('form');
+      form.className = 'editor-form';
+
+      const title = document.createElement('input');
+      title.placeholder = 'Title';
+      title.required = true;
+
+      const slug = document.createElement('input');
+      slug.placeholder = 'Slug';
+
+      const summary = document.createElement('textarea');
+      summary.placeholder = 'Summary';
+
+      const coverImageUrl = document.createElement('input');
+      coverImageUrl.placeholder = 'Cover Image URL';
+
+      const content = document.createElement('textarea');
+      content.placeholder = 'Content (HTML allowed)';
+
+      const tags = document.createElement('input');
+      tags.placeholder = 'Tags (comma separated)';
+
+      const categories = document.createElement('input');
+      categories.placeholder = 'Categories (comma separated)';
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = isNew ? 'Create' : 'Save';
+      saveBtn.type = 'submit';
+
+      const publishBtn = document.createElement('button');
+      publishBtn.textContent = 'Publish';
+      publishBtn.type = 'button';
+
+      const unpublishBtn = document.createElement('button');
+      unpublishBtn.textContent = 'Unpublish';
+      unpublishBtn.type = 'button';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.type = 'button';
+
+      const statusEl = document.createElement('div');
+      statusEl.className = 'status';
+
+      actions.append(saveBtn, publishBtn, unpublishBtn, deleteBtn);
+
+      form.append(title, slug, summary, coverImageUrl, content, tags, categories, actions, statusEl);
+      el.append(form);
+
+      // Load existing data if editing
+      if (!isNew) {
+        const rs = await apiFetch(`/api/posts/admin/${encodeURIComponent(id)}`, { auth: true });
+        if (rs.ok && rs.data) {
+          const p = rs.data;
+          title.value = p.title || '';
+          slug.value = p.slug || '';
+          summary.value = p.summary || '';
+          coverImageUrl.value = p.coverImageUrl || '';
+          content.value = p.content || '';
+          tags.value = Array.isArray(p.tags) ? p.tags.join(', ') : '';
+          categories.value = Array.isArray(p.categories) ? p.categories.join(', ') : '';
+          statusEl.textContent = p.published ? 'Published' : 'Draft';
+        } else {
+          statusEl.textContent = rs.error || 'Failed to load post';
+        }
+      } else {
+        statusEl.textContent = 'Draft';
+      }
+
+      async function currentPayload() {
+        return {
+          title: title.value.trim(),
+          slug: slug.value.trim(),
+          summary: summary.value.trim(),
+          coverImageUrl: coverImageUrl.value.trim(),
+          content: content.value.trim(),
+          tags: tags.value.split(',').map((s) => s.trim()).filter(Boolean),
+          categories: categories.value.split(',').map((s) => s.trim()).filter(Boolean),
+        };
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        saveBtn.disabled = true;
+        statusEl.textContent = 'Saving...';
+        const payload = await currentPayload();
+        const rs = isNew ? await adminCreatePost(payload) : await adminUpdatePost(id, payload);
+        saveBtn.disabled = false;
+        if (rs.ok) {
+          statusEl.textContent = 'Saved';
+          if (isNew && rs.data?._id) {
+            window.location.href = `/admin/posts/${rs.data._id}`;
+          }
+        } else {
+          statusEl.textContent = rs.error || 'Save failed';
+        }
+      });
+
+      publishBtn.addEventListener('click', async () => {
+        if (isNew) return alert('Please save first');
+        publishBtn.disabled = true;
+        const rs = await adminPublishPost(id);
+        publishBtn.disabled = false;
+        if (rs.ok) statusEl.textContent = 'Published';
+        else alert(rs.error || 'Publish failed');
+      });
+
+      unpublishBtn.addEventListener('click', async () => {
+        if (isNew) return alert('Please save first');
+        unpublishBtn.disabled = true;
+        const rs = await adminUnpublishPost(id);
+        unpublishBtn.disabled = false;
+        if (rs.ok) statusEl.textContent = 'Draft';
+        else alert(rs.error || 'Unpublish failed');
+      });
+
+      deleteBtn.addEventListener('click', async () => {
+        if (isNew) return (window.location.href = '/admin');
+        if (!confirm('Delete this post?')) return;
+        deleteBtn.disabled = true;
+        const rs = await adminDeletePost(id);
+        deleteBtn.disabled = false;
+        if (rs.ok) window.location.href = '/admin';
+        else alert(rs.error || 'Delete failed');
+      });
+    };
+  </script>
+
+  <style>
+    .editor-form{ display:grid; gap:10px; }
+    .editor-form input, .editor-form textarea{
+      border:1px solid var(--border-color); border-radius:8px; padding:8px 10px; background: var(--bg-color); color: var(--text-color);
+    }
+    .editor-form textarea{ min-height: 160px; }
+    .actions{ display:flex; gap:8px; }
+    .actions button{ padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); }
+    .status{ color: var(--text-secondary); }
+  </style>
+</Layout>

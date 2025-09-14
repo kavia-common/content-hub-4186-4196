@@ -1,0 +1,46 @@
+---
+export async function getStaticPaths() {
+  // No pre-known slugs at build time; generate none so route is built on-demand by client navigation
+  return [];
+}
+
+import Layout from '../../layouts/Layout.astro';
+import { getPostBySlug } from '../../lib/api';
+import LikeButton from '../../components/LikeButton.astro';
+import CommentWidget from '../../components/CommentWidget.astro';
+
+const { slug } = Astro.params;
+if (!slug) {
+  throw new Error('Missing slug');
+}
+const res = await getPostBySlug(slug);
+const post = res.ok ? res.data : undefined;
+---
+
+<Layout title={post?.title} description={post?.summary}>
+  {post ? (
+    <>
+      <article class="post">
+        <h1>{post.title}</h1>
+        {post.publishedAt && <p class="date">{new Date(post.publishedAt).toLocaleDateString()}</p>}
+        {post.coverImageUrl && <img class="cover" src={post.coverImageUrl} alt={post.title} />}
+        <div class="content" set:html={post.content}></div>
+        <div class="engagement">
+          <LikeButton postId={post._id} />
+        </div>
+      </article>
+
+      <CommentWidget postId={post._id} />
+    </>
+  ) : (
+    <p>Post not found.</p>
+  )}
+</Layout>
+
+<style>
+.post h1{ margin-bottom: 6px; }
+.post .date{ color: var(--text-secondary); }
+.post .cover{ width:100%; border-radius: 12px; margin: 12px 0; }
+.post .content :global(p){ line-height: 1.7; color: var(--text-color); }
+.engagement{ margin-top: 20px; }
+</style>

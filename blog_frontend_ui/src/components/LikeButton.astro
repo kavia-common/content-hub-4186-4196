@@ -1,0 +1,63 @@
+---
+/**
+ * PUBLIC_INTERFACE
+ * LikeButton is an interactive client component that fetches current likes and allows the user to like the post.
+ * Props:
+ * - postId: string (required)
+ */
+const { postId } = Astro.props as { postId: string };
+---
+
+<div client:load class="like-root" data-post-id={postId}></div>
+
+<script>
+  import { getLikes, likePost } from '../lib/api';
+
+  async function mount(root) {
+    const postId = root.dataset.postId;
+    const btn = document.createElement('button');
+    const countEl = document.createElement('span');
+    btn.textContent = '👍 Like';
+    btn.className = 'like-btn';
+    countEl.className = 'like-count';
+    countEl.textContent = '...';
+    root.append(btn, countEl);
+
+    async function refresh() {
+      const res = await getLikes(postId);
+      if (res.ok && res.data) {
+        countEl.textContent = String(res.data.count);
+      } else {
+        countEl.textContent = '0';
+      }
+    }
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      await likePost(postId);
+      await refresh();
+      btn.disabled = false;
+    });
+
+    await refresh();
+  }
+
+  // initialize after hydrate
+  export default (el) => mount(el);
+</script>
+
+<style>
+.like-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-color);
+  cursor:pointer;
+}
+.like-btn:disabled{ opacity:.7; cursor: not-allowed; }
+.like-count{ margin-left:8px; color: var(--text-secondary); }
+</style>

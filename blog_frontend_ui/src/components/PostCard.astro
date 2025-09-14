@@ -1,0 +1,37 @@
+---
+import type { PostListItem } from '../lib/api';
+const { post } = Astro.props as { post: PostListItem };
+---
+
+<article class="card">
+  <a href={`/posts/${post.slug}`} class="title">{post.title}</a>
+  {post.summary && <p class="summary">{post.summary}</p>}
+  <div class="meta">
+    {post.publishedAt ? <span>{new Date(post.publishedAt).toLocaleDateString()}</span> : <span>Unpublished</span>}
+    {post.tags && post.tags.length > 0 && (
+      <span class="tags">Tags: {post.tags.map((t) => `<a href="/tags/${t}">${t}</a>`).join(', ')}</span>
+    )}
+  </div>
+</article>
+
+<style>
+.card{
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--card-bg);
+  margin-bottom: 14px;
+}
+.title{
+  display: inline-block;
+  font-size: 1.25rem;
+  color: var(--text-color);
+  text-decoration: none;
+  font-weight: 700;
+}
+.title:hover { text-decoration: underline; }
+.summary{ color: var(--text-secondary); margin: 8px 0 4px; }
+.meta{ font-size: .9rem; color: var(--text-secondary); display:flex; gap:12px; flex-wrap: wrap; }
+.tags a{ color: var(--text-secondary); text-decoration:none; }
+.tags a:hover{ text-decoration: underline; }
+</style>

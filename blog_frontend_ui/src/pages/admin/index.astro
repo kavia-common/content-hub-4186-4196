@@ -1,0 +1,162 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { adminLogin, adminMe, adminListPosts, setToken } from '../../lib/api';
+import { PUBLIC_AUTH_TOKEN_STORAGE_KEY } from '../../lib/env';
+
+type DashboardState = {
+  user?: any;
+  error?: string;
+  posts?: any[];
+};
+---
+
+<Layout title="Admin" noIndex={true}>
+  <h1>Admin Dashboard</h1>
+
+  <section id="admin-root" client:load></section>
+
+  <script>
+    import { adminLogin, adminMe, adminListPosts, setToken } from '../../lib/api';
+    import { PUBLIC_AUTH_TOKEN_STORAGE_KEY } from '../../lib/env';
+
+    async function render() {
+      const root = document.getElementById('admin-root');
+      root.innerHTML = '';
+
+      const token = localStorage.getItem(PUBLIC_AUTH_TOKEN_STORAGE_KEY);
+
+      // Views
+      const loginView = () => {
+        const form = document.createElement('form');
+        form.className = 'login-form';
+        const email = document.createElement('input');
+        email.name = 'email';
+        email.type = 'email';
+        email.placeholder = 'Email';
+        email.required = true;
+        const password = document.createElement('input');
+        password.name = 'password';
+        password.type = 'password';
+        password.placeholder = 'Password';
+        password.required = true;
+        const submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.textContent = 'Login';
+
+        const errorEl = document.createElement('div');
+        errorEl.className = 'error';
+
+        form.append(email, password, submit, errorEl);
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          submit.disabled = true;
+          errorEl.textContent = '';
+          const res = await adminLogin({ email: email.value, password: password.value });
+          submit.disabled = false;
+          if (res.ok && res.data) {
+            localStorage.setItem(PUBLIC_AUTH_TOKEN_STORAGE_KEY, res.data.token);
+            await render();
+          } else {
+            errorEl.textContent = res.error || 'Login failed';
+          }
+        });
+
+        return form;
+      };
+
+      const dashboardView = async () => {
+        const container = document.createElement('div');
+        const me = await adminMe();
+        const header = document.createElement('div');
+        header.className = 'dash-head';
+        header.innerHTML = `<strong>Welcome, ${me.ok && me.data?.user?.email ? me.data.user.email : 'Admin'}</strong>`;
+
+        const logoutBtn = document.createElement('button');
+        logoutBtn.textContent = 'Logout';
+        logoutBtn.addEventListener('click', () => {
+          localStorage.removeItem(PUBLIC_AUTH_TOKEN_STORAGE_KEY);
+          render();
+        });
+        header.append(logoutBtn);
+
+        const filterWrap = document.createElement('div');
+        filterWrap.className = 'filters';
+        const statusSel = document.createElement('select');
+        statusSel.innerHTML = '<option value="all">All</option><option value="draft">Draft</option><option value="published">Published</option>';
+        const refreshBtn = document.createElement('button');
+        refreshBtn.textContent = 'Refresh';
+
+        filterWrap.append(statusSel, refreshBtn);
+
+        const list = document.createElement('div');
+        list.className = 'post-list';
+
+        async function load() {
+          list.textContent = 'Loading...';
+          const res = await adminListPosts({ status: statusSel.value });
+          if (res.ok && Array.isArray(res.data)) {
+            list.innerHTML = '';
+            res.data.forEach((p) => {
+              const row = document.createElement('div');
+              row.className = 'post-row';
+              row.innerHTML = `
+                <div class="info">
+                  <a href="/admin/posts/${p._id}">${p.title}</a>
+                  <div class="meta">${p.published ? 'Published' : 'Draft'} ${p.publishedAt ? '• ' + new Date(p.publishedAt).toLocaleDateString() : ''}</div>
+                </div>
+                <div class="actions">
+                  <a href="/admin/posts/${p._id}">Edit</a>
+                </div>
+              `;
+              list.append(row);
+            });
+            if (res.data.length === 0) list.textContent = 'No posts.';
+          } else {
+            list.textContent = res.error || 'Failed to load posts';
+          }
+        }
+        refreshBtn.addEventListener('click', load);
+        statusSel.addEventListener('change', load);
+
+        const createLink = document.createElement('a');
+        createLink.href = '/admin/posts/new';
+        createLink.textContent = 'Create New Post';
+        createLink.className = 'create-link';
+
+        container.append(header, filterWrap, createLink, list);
+        await load();
+        return container;
+      };
+
+      if (!token) {
+        root.append(loginView());
+      } else {
+        root.append(await dashboardView());
+      }
+    }
+
+    export default () => render();
+  </script>
+
+  <style>
+    .login-form{ display:grid; gap:10px; max-width:360px; }
+    .login-form input{ border:1px solid var(--border-color); border-radius:8px; padding:8px 10px; background: var(--bg-color); color: var(--text-color); }
+    .login-form button{ padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); }
+    .error{ color: #b91c1c; }
+
+    .dash-head{ display:flex; align-items:center; justify-content: space-between; margin-bottom: 10px; }
+    .dash-head button{ padding:6px 10px; border-radius:8px; border:1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); }
+
+    .filters{ display:flex; gap:8px; margin: 8px 0 10px; }
+    .filters select, .filters button{ padding:8px 10px; border-radius:8px; border:1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); }
+
+    .create-link{ display:inline-block; margin: 8px 0 12px; }
+
+    .post-list{ display:grid; gap:8px; }
+    .post-row{ display:flex; align-items:center; justify-content: space-between; border:1px solid var(--border-color); border-radius:10px; background: var(--card-bg); padding:10px 12px; }
+    .post-row .info a{ color: var(--text-color); text-decoration:none; font-weight: 600; }
+    .post-row .info a:hover{ text-decoration: underline; }
+    .post-row .meta{ color: var(--text-secondary); font-size: .9rem; }
+  </style>
+</Layout>

@@ -1,0 +1,41 @@
+---
+import { PUBLIC_SITE_NAME } from '../lib/env';
+const year = new Date().getFullYear();
+---
+
+<nav class="navbar">
+  <a class="brand" href="/">{PUBLIC_SITE_NAME}</a>
+  <div class="links">
+    <a href="/search">Search</a>
+    <a href="/categories">Categories</a>
+    <a href="/tags">Tags</a>
+    <a href="/admin">Admin</a>
+  </div>
+</nav>
+
+<style>
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--bg-color);
+  z-index: 10;
+}
+.brand {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text-color);
+}
+.links a {
+  margin-left: 16px;
+  text-decoration: none;
+  color: var(--text-color);
+}
+.links a:hover {
+  text-decoration: underline;
+}
+</style>
